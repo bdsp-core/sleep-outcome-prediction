@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 import sys
 sys.path.insert(0, '../sleep_general')
@@ -16,6 +17,7 @@ def read_psg_from_bdsp(sid, dov):
     sleep_stages: np.ndarray, shape = (#sample points,)
     params: dict, contains Fs, channel_names, start_time
     """
+    # get `signal_path` and `sleep_stage_path`
     base_folder = '/home/ec2-user/studies/BDSP-CORE/PSG/data/S0001'
     data_folders = os.listdir(base_folder)
 
@@ -28,7 +30,6 @@ def read_psg_from_bdsp(sid, dov):
     sleep_stage_path = os.path.join(base_folder, data_folder[0], sleep_stage_path[0])
 
     # load signal
-    import pdb;pdb.set_trace()
     signals, params = load_mgh_signal(signal_path, channels=['C3.?[AM]', 'C4.?[AM]'], return_signal_dtype='numpy')
     Fs = params['Fs']
 
@@ -46,7 +47,7 @@ def main():
 
     # specify which subject you need
 
-    i = 0
+    i = 134
     sid = df.HashID.iloc[i]
     dov = df.DOVshifted.iloc[i].strftime('%Y%m%d')
     signals, sleep_stages, params = read_psg_from_bdsp(sid, dov)
@@ -58,3 +59,4 @@ def main():
 
 if __name__=='__main__':
     main()
+

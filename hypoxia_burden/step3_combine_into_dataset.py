@@ -19,6 +19,7 @@ df_ahi['DOVshifted'] = df_ahi.DOVshifted.dt.strftime('%Y-%m-%d')
 
 df = df2.merge(df1[['HashID', 'DOVshifted']+cols], on=['HashID','DOVshifted'], how='left', validate='1:1')
 df = df.merge(df_ahi[['HashID', 'DOVshifted', 'AHI']], on=['HashID','DOVshifted'], how='left', validate='1:1')
+df.loc[pd.isna(df.AHI), cols] = np.nan
 df.to_csv('../features_MGH_deid.csv', index=False)
 
 # id version

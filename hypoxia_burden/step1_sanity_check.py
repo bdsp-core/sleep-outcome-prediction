@@ -2,6 +2,7 @@
 check if in MGH dataset, the resp annotation is consistent with AHI?
 i.e., no missing resp annotation?
 """
+from collections import defaultdict
 import os
 import numpy as np
 import pandas as pd
@@ -13,27 +14,36 @@ from mgh_sleeplab import get_path_from_bdsp
 base_folder = '/sbgenomics/project-files/bdsp-opendata-repository/PSG/data/S0001'
 data_folders = os.listdir(base_folder)
 
+df_resp_label = pd.read_csv('all_resp_labels.zip', compression='zip')
+sid_dov2ids = defaultdict(list)
+for i in tqdm(range(len(df_resp_label))):
+    sid_dov2ids[(df_resp_label.HashID.iloc[i], df_resp_label.DOVshifted.iloc[i])].append(i)
+
 df = pd.read_excel('../mastersheet_outcome_deid.xlsx')
 df['AHI_annot'] = np.nan
 
 for i in tqdm(range(len(df))):
-    sid = df.HashID.iloc[i]
-    dov = df.DOVshifted.iloc[i]
+    sid  = df.HashID.iloc[i]
+    dov  = df.DOVshifted.iloc[i]
+    dov2 = dov.strftime('%Y-%m-%d')
 
     signal_path, annot_path = get_path_from_bdsp(sid, dov, base_folder=base_folder, data_folders=data_folders, raise_error=False)
     if annot_path is None:
         continue
     annot = pd.read_csv(annot_path)
     annot['event'] = annot.event.str.lower()
-    if annot.event.str.contains('redact').any():
-        continue
 
-    resp_ids = annot.event.str.contains('resp')&annot.event.str.contains('event')&annot.event.str.contains('pnea')
     sleep_ids = annot.event.str.startswith('sleep_stage_n')|annot.event.str.startswith('sleep_stage_r')
     tst = np.sum(sleep_ids)*30/3600
 
+    if annot.event.str.contains('redact').any():
+        annot_resp = df_resp_label.iloc[sid_dov2ids[(sid, dov2)]]
+    else:
+        resp_ids = annot.event.str.contains('resp')&annot.event.str.contains('event')&annot.event.str.contains('pnea')
+        annot_resp = annot[resp_ids]
+
     if tst>0:
-        df.loc[i, 'AHI_annot'] = resp_ids.sum() / tst
+        df.loc[i, 'AHI_annot'] = len(annot_resp) / tst
 
 df[['HashID', 'DOVshifted', 'AHI', 'AHI_annot']].to_excel('dataset_AHI_AHI_annot.xlsx', index=False)
 

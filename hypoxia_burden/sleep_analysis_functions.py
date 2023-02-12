@@ -179,7 +179,7 @@ def add_spo2_prior_window_to_list(data, spo2_collection_100s_prior, idx_tmp, fs)
         pdb.set_trace()
 
     spo2_collection_100s_prior.append(spo2_prior)
-    del spo2_prior
+    #del spo2_prior
 
     return spo2_collection_100s_prior
 
@@ -244,7 +244,7 @@ def add_spo2_window_to_list(data, spo2_collection, idx_tmp, search_window_max_pr
 
     if any(np.isfinite(spo2_window)):
         spo2_collection.append(spo2_window)
-    del spo2_window
+    #del spo2_window
 
     return spo2_collection
 
@@ -265,7 +265,7 @@ def add_spo2_prior_window_to_list(data, spo2_collection_100s_prior, idx_tmp, fs)
 
     if any(np.isfinite(spo2_prior)):
         spo2_collection_100s_prior.append(spo2_prior)
-    del spo2_prior
+    #del spo2_prior
 
     return spo2_collection_100s_prior
 
@@ -315,7 +315,7 @@ def compute_hypoxia_burden(data, fs, apnea_name = 'Apnea', hypoxia_name = 'hypox
 
         spo2_collection_100s_prior = add_spo2_prior_window_to_list(data_spo2, spo2_collection_100s_prior, idx_tmp, fs)
 
-        gc.collect()
+        #gc.collect()
 
     spo2_refs = np.array(spo2_collection_100s_prior)
     spo2_refs = np.nanquantile(spo2_refs, 0.99, axis=1)

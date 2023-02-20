@@ -97,7 +97,6 @@ def detect_apnea(model, signal, sleep_stage, Fs, use_gpu=False, newFs=10):
         # run model 1 over all segments
         for i_segs in range(0,signal_segs.shape[0], batch_size):
             signal_segs_tmp = signal_segs[i_segs:i_segs+batch_size, :]
-            import pdb;pdb.set_trace()
             signal_segs_tmp = th.Tensor(np.resize(signal_segs_tmp,(signal_segs_tmp.shape[0],1,signal_segs_tmp.shape[1])))
             if use_gpu:
                 signal_segs_tmp = signal_segs_tmp.cuda()

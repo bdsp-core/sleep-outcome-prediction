@@ -16,7 +16,7 @@ from mgh_sleeplab import *
 use_gpu = True
 apnea_model = load_apnea_binary_model('apnea_detection_model_binary', use_gpu=use_gpu, n_gpu=int(use_gpu))
 
-df = pd.read_excel('/sbgenomics/workspace/sleep-outcome-prediction/mastersheet_outcome_deid.xlsx')
+df = pd.read_excel('../mastersheet_outcome_deid.xlsx')
 df['DOVshifted'] = df.DOVshifted.dt.strftime('%Y-%m-%d')
 
 df_resp_label = pd.read_csv('all_resp_labels.zip', compression='zip')
@@ -30,9 +30,15 @@ sid_dov_to_remove['remove'] = 1
 df_resp_label_to_keep = df_resp_label.merge(sid_dov_to_remove, on=['HashID', 'DOVshifted'], how='left')
 df_resp_label_to_keep = df_resp_label_to_keep[pd.isna(df_resp_label_to_keep.remove)].reset_index(drop=True)[df_resp_label.columns]
 
+df_res = pd.read_csv('resp_labels_WaveNet_old.csv')
+df_res['DOVshifted'] = df_res['DOVshifted'].str.replace('−','-')
+df_res['remove'] = 1
+sid_dov_to_remove = sid_dov_to_remove[['HashID', 'DOVshifted']].merge(df_res[['HashID', 'DOVshifted', 'remove']], on=['HashID', 'DOVshifted'], how='left')
+sid_dov_to_remove = sid_dov_to_remove[pd.isna(sid_dov_to_remove.remove)].reset_index(drop=True)
+
+#"""
 base_folder = '/sbgenomics/project-files/bdsp-opendata-repository/PSG/data/S0001'
 data_folders = os.listdir(base_folder)
-
 n_err = 0
 newFs = 10
 df_res = defaultdict(list)
@@ -79,11 +85,16 @@ for i in tqdm(range(len(sid_dov_to_remove))):
                 df_res['event'].append('respevent - obstructiveapnea - 1 - WaveNet predicted')
             cc += ll
         if i%10==0:
-            pd.DataFrame(data=df_res).to_csv('resp_labels_WaveNet.csv', index=False)
+            df_res_ = pd.DataFrame(data=df_res)
+            df_res_.to_csv('resp_labels_WaveNet1.csv', index=False)
     except Exception as ee:
         n_err += 1
         print(f'[{n_err}] {sid}, {dov}: {str(ee)}')
-
-df_res = pd.concat([df_resp_label_to_keep, pd.DataFrame(data=df_res)], axis=0, ignore_index=True)
+import pdb;pdb.set_trace()
+df_res = pd.DataFrame(data=df_res)
 df_res.to_csv('resp_labels_WaveNet.csv', index=False)
+#"""
+#df_res = pd.read_csv('resp_labels_WaveNet.csv')
+df_res = pd.concat([df_resp_label_to_keep, df_res], axis=0, ignore_index=True)
+df_res.to_csv('all_resp_labels_with_WaveNet.zip', index=False, compression='zip')
 

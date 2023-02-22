@@ -43,7 +43,7 @@ n_err = 0
 newFs = 10
 df_res = defaultdict(list)
 p_abd = re.compile('abd', re.IGNORECASE)
-for i in tqdm(range(len(sid_dov_to_remove))):
+for i in tqdm(range(100)):#len(sid_dov_to_remove))):
     try:
         sid = sid_dov_to_remove.HashID.iloc[i]
         dov = datetime.datetime.strptime(sid_dov_to_remove.DOVshifted.iloc[i], '%Y-%m-%d')
@@ -67,26 +67,32 @@ for i in tqdm(range(len(sid_dov_to_remove))):
             assert len(channel_idx)==1, f'no or multiple ABD channel(s): {channel_names}'
             abd = ff['s'][:,channel_idx[0]]
 
-        annot = annotations_preprocess(pd.read_csv(annot_path), Fs)
+        annot = annotations_preprocess(pd.read_csv(annot_path), Fs, t0=t0)
         sleep_stages = vectorize_sleep_stages(annot, len(abd))
 
         apnea, apnea_prob = detect_apnea(apnea_model, abd, sleep_stages, Fs, use_gpu=use_gpu, newFs=newFs)
         apnea[np.isnan(apnea)] = -1
 
+        df_res['HashID'].append(sid)
+        df_res['DOVshifted'].append(dov.strftime('%Y−%m−%d'))
+        df_res['epoch'].append(1)
+        df_res['time'].append(t0.strftime('%H:%M:%S'))
+        df_res['duration'].append(1/newFs)
+        df_res['event'].append('placeholder - WaveNet')
         cc = 0
         for k,l in groupby(apnea):
             ll = len(list(l))
             if k==1:
                 df_res['HashID'].append(sid)
                 df_res['DOVshifted'].append(dov.strftime('%Y−%m−%d'))
-                df_res['epoch'].append(int(cc/newFs/30))
-                df_res['time'].append((t0+datetime.timedelta(seconds=cc/newFs)).strftime('%Y-%m-%d %H:%M:%S'))
+                df_res['epoch'].append(int(cc/newFs/30)+1)
+                df_res['time'].append((t0+datetime.timedelta(seconds=cc/newFs)).strftime('%H:%M:%S'))
                 df_res['duration'].append(ll/newFs)
                 df_res['event'].append('respevent - obstructiveapnea - 1 - WaveNet predicted')
             cc += ll
         if i%10==0:
             df_res_ = pd.DataFrame(data=df_res)
-            df_res_.to_csv('resp_labels_WaveNet1.csv', index=False)
+            df_res_.to_csv('resp_labels_WaveNet0-100.csv', index=False)
     except Exception as ee:
         n_err += 1
         print(f'[{n_err}] {sid}, {dov}: {str(ee)}')

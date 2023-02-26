@@ -20,11 +20,11 @@ df_path = pd.read_csv('paths.csv')
 df = pd.concat([df, df_path], axis=1)
 df = df.dropna(subset=keys+['SignalPath', 'AnnotPath']).reset_index(drop=True)
 
-df_sanity_check = pd.read_csv('dataset_AHI_AHI_annot_with_WaveNet.csv')
+df_sanity_check = pd.read_csv('dataset_AHI_AHI_annot_good.csv')
 df_sanity_check['DOVshifted'] = pd.to_datetime(df_sanity_check.DOVshifted)
 df = df.merge(df_sanity_check[keys], on=keys, how='inner', validate='1:1')
 
-df_resp_label = pd.read_csv('../apnea_detection/all_resp_labels_with_WaveNet.zip', compression='zip')
+df_resp_label = pd.read_csv('../apnea_detection/all_resp_labels_good.zip', compression='zip')
 sid_dov2respids = defaultdict(list)
 for i in range(len(df_resp_label)):
     sid_dov2respids[(df_resp_label.HashID.iloc[i], df_resp_label.DOVshifted.iloc[i])].append(i)
@@ -55,23 +55,22 @@ for i in tqdm(range(len(df))):
             assert len(channel_idx)==1, f'no or multiple SpO2 channel(s): {channel_names}'
             spo2 = ff['s'][:,channel_idx[0]]
             
+            year = int(ff['recording']['year'][()])
+            month = int(ff['recording']['month'][()])
+            day = int(ff['recording']['day'][()])
+            hour = int(ff['recording']['hour'][()])
+            minute = int(ff['recording']['minute'][()])
+            second = int(ff['recording']['second'][()])
+            t0 = datetime.datetime(year=year, month=month, day=day, hour=hour, minute=minute, second=second)
+            
         annot = pd.read_csv(annot_path)
         annot['event'] = annot.event.str.lower()
-        sleep_ids = annot.event.str.startswith('sleep_stage_n')|annot.event.str.startswith('sleep_stage_r')
+        sleep_ids = annot.event.str.contains('stage_n')|annot.event.str.contains('stage_r')
         tst = np.sum(sleep_ids)*30/3600
         
-        # get apnea labels according to step1_sanity_check
-        ahi_annot1 = len(df_resp_label.iloc[sid_dov2respids[(sid, dov2)]])/tst
-        ahi_annot2 = np.sum(annot.event.str.contains('resp')&annot.event.str.contains('event')&annot.event.str.contains('pnea'))/tst
-        if ahi_annot1==0 and ahi_annot2==0 and ahi>0:
-            continue
-        if abs(ahi_annot1-ahi)<abs(ahi_annot2-ahi):
-            df_apnea_label = df_resp_label.iloc[sid_dov2respids[(sid, dov2)]]
-        else:
-            df_apnea_label = annot
+        df_apnea_label = df_resp_label.iloc[sid_dov2respids[(sid, dov2)]]
 
-        import pdb;pdb.set_trace()
-        resp = vectorize_respiratory_events(annotations_preprocess(df_apnea_label, fs), len(spo2))
+        resp = vectorize_respiratory_events(annotations_preprocess(df_apnea_label, fs, t0=t0), len(spo2))
         data = pd.DataFrame(data=np.c_[spo2, resp], columns=['spo2', 'apnea'])
 
         dt_start = pd.Timestamp('2000-01-01 00:00:00')

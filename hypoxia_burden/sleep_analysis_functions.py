@@ -296,7 +296,7 @@ def compute_hypoxia_burden(data, fs, apnea_name = 'Apnea', hypoxia_name = 'hypox
     spo2_collection_100s_prior = []
     fixed_length = int(fs*(np.abs(search_window_max_prior) + np.abs(search_window_max_post))) # slicing/selection operation with fixed length because length of arrays can vary by 1 index due to second-based-"index selection
 
-    import multiprocessing
+    #import multiprocessing
 
     data_spo2 = data.loc[:, ['spo2']].copy()
 

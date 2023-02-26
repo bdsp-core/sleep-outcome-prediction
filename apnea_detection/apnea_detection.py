@@ -2,6 +2,7 @@ import os
 import sys
 import numpy as np
 import pandas as pd
+from scipy.signal import resample
 from scipy.special import softmax
 from mne.filter import notch_filter, filter_data
 import torch as th
@@ -63,7 +64,14 @@ def detect_apnea(model, signal, sleep_stage, Fs, use_gpu=False, newFs=10):
             signal = signal[...,::(int(Fs)//int(newFs))]
             sleep_stage = sleep_stage[::(int(Fs)//int(newFs))]
         else:
-            raise NotImplementedError
+            epoch_size = int(round(30*Fs))
+            sleep_stage_ids = np.arange(0, signal.shape[-1]-epoch_size+1, epoch_size)+epoch_size//2
+            sleep_stage = sleep_stage[sleep_stage_ids]
+            sleep_stage = np.repeat(sleep_stage, int(round(30*newFs)))
+            signal = resample(signal, int(round(signal.shape[-1]/Fs*newFs)), axis=-1)
+            len_ = min(signal.shape[-1], len(sleep_stage))
+            signal = signal[...,:len_]
+            sleep_stage = sleep_stage[:len_]
     Fs = newFs
 
     # clip signal:
@@ -129,6 +137,7 @@ def detect_apnea(model, signal, sleep_stage, Fs, use_gpu=False, newFs=10):
         overall_ind = overall_ind[pass_ind]
 
     #print('\n--> Final model')
+    #if signal_segs.shape[0]>0:
     # run multiclass model over passed on segments
     yprob = []
     for i_segs in range(0,signal_segs.shape[0], batch_size):

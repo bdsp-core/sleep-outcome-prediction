@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, '/sbgenomics/workspace/sleep_general')
 from mgh_sleeplab import get_path_from_bdsp
 
-suffix = '_with_WaveNet'
+suffix = '_good'
 
 df_resp_label = pd.read_csv(f'../apnea_detection/all_resp_labels{suffix}.zip', compression='zip')
 sid_dov2ids = defaultdict(list)
@@ -47,7 +47,7 @@ for i in tqdm(range(len(df))):
     #signal_path, annot_path = get_path_from_bdsp(sid, dov, base_folder=base_folder, data_folders=data_folders, raise_error=False)
     signal_path = df_path.SignalPath.iloc[i]
     annot_path = df_path.AnnotPath.iloc[i]
-    if pd.isna(annot_path):
+    if pd.isna(signal_path) or pd.isna(annot_path):
         continue
     annot = pd.read_csv(annot_path)
     annot['event'] = annot.event.str.lower()
@@ -59,20 +59,22 @@ for i in tqdm(range(len(df))):
 
     # AHI from original labels
     ahi_annot1 = len(df_resp_label.iloc[sid_dov2ids[(sid, dov2)]])/tst
+    """
     # AHI from original labels
-    ahi_annot2 = np.sum(annot.event.str.contains('resp')&annot.event.str.contains('event')&annot.event.str.contains('pnea'))/tst
+    ahi_annot2 = np.sum(annot.event.str.contains('pnea'))/tst
 
     if not (ahi_annot1==0 and ahi_annot2==0 and ahi>0):
         if abs(ahi_annot1-ahi)<abs(ahi_annot2-ahi):
             df.loc[i, 'AHI_annot'] = ahi_annot1
         else:
             df.loc[i, 'AHI_annot'] = ahi_annot2
+    """
+    df.loc[i, 'AHI_annot'] = ahi_annot1
 
 cols = ['HashID', 'DOVshifted', 'AHI', 'AHI_annot']
 df = df[cols]
-import pdb;pdb.set_trace()
 df = df.dropna().reset_index(drop=True)
-df = df[df.AHI>0].reset_index(drop=True)
+df = df[((df.AHI>0)&(df.AHI_annot>0))|((df.AHI==0)&(df.AHI_annot==0))].reset_index(drop=True)
 df = df[np.abs(df.AHI-df.AHI_annot)<5].reset_index(drop=True)
 df.to_csv(f'dataset_AHI_AHI_annot{suffix}.csv', index=False)
 print(pearsonr(df.AHI, df.AHI_annot))

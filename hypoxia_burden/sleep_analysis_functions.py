@@ -249,27 +249,6 @@ def add_spo2_window_to_list(data, spo2_collection, idx_tmp, search_window_max_pr
     return spo2_collection
 
 
-def add_spo2_prior_window_to_list(data, spo2_collection_100s_prior, idx_tmp, fs):
-
-    spo2_reference_lookback=100  # in seconds
-    spo2_prior = data.loc[idx_tmp - timedelta(seconds=spo2_reference_lookback): idx_tmp, 'spo2'].values
-    spo2_prior = spo2_prior[:spo2_reference_lookback * fs]
-
-    if not len(spo2_prior) == spo2_reference_lookback * fs:
-        if (idx_tmp < data.iloc[[spo2_reference_lookback * fs + 1]].index)[0]:  # spo2_reference_lookback*fs+1:
-            spo2_prior = np.concatenate([np.ones(spo2_reference_lookback * fs - spo2_prior.shape[0], ) * spo2_prior[0], spo2_prior])
-        elif (idx_tmp > data.iloc[[-spo2_reference_lookback * fs - 1]].index)[0]:  # data.shape[0] - spo2_reference_lookback*fs - 1:
-            spo2_prior = np.concatenate([spo2_prior, np.ones(spo2_reference_lookback * fs - spo2_prior.shape[0], ) * spo2_prior[-1]])
-    if not len(spo2_prior) == spo2_reference_lookback * fs:
-        pdb.set_trace()
-
-    if any(np.isfinite(spo2_prior)):
-        spo2_collection_100s_prior.append(spo2_prior)
-    #del spo2_prior
-
-    return spo2_collection_100s_prior
-
-
 def compute_hypoxia_burden(data, fs, apnea_name = 'Apnea', hypoxia_name = 'hypoxic_area', hours_sleep = None, search_window_type='patient_specific', 
                         search_window_max_prior = -50, search_window_max_post = 50, verbose=False):
     '''
@@ -301,7 +280,6 @@ def compute_hypoxia_burden(data, fs, apnea_name = 'Apnea', hypoxia_name = 'hypox
     data_spo2 = data.loc[:, ['spo2']].copy()
 
     for idx_tmp in apnea_end_idx:
-
         # with multiprocessing.Pool(1) as pool:
         #     spo2_collection = pool.map(add_spo2_window_to_list, [data_spo2, spo2_collection, idx_tmp, search_window_max_prior, search_window_max_post,
         #                         fixed_length])
@@ -340,19 +318,23 @@ def compute_hypoxia_burden(data, fs, apnea_name = 'Apnea', hypoxia_name = 'hypox
     idx_last_apneapred = data.index[data['Apnea_End']] - timedelta(seconds = 1)
     areas = []
     for i0, i1, i_apneaend, ref in list(zip(idx_prior, idx_post, idx_last_apneapred, spo2_refs)):
-        spo2_tmp = data.loc[i0:i1,'spo2'].values
-        if sum(pd.isna(spo2_tmp))/len(spo2_tmp) > 0.3:
-            # if more than 30% are nan values, don't compute hypoxic burden
-            data.loc[i0:i1, hypoxia_name] = np.nan
-        else: 
-            spo2_tmp = spo2_tmp[np.logical_not(pd.isna(spo2_tmp))]
-            spo2_drop = ref - spo2_tmp
-            if not all(np.isfinite(spo2_drop)):
-                continue
-            spo2_drop[spo2_drop<0] = 0
-            area_tmp = simps(spo2_drop, dx=1/fs)
-            areas.append(area_tmp)
-            data.loc[i_apneaend, hypoxia_name] = area_tmp
+        try:
+            spo2_tmp = data.loc[i0:i1,'spo2'].values
+            if sum(pd.isna(spo2_tmp))/len(spo2_tmp) > 0.3:
+                # if more than 30% are nan values, don't compute hypoxic burden
+                data.loc[i0:i1, hypoxia_name] = np.nan
+            else: 
+                spo2_tmp = spo2_tmp[np.logical_not(pd.isna(spo2_tmp))]
+                spo2_drop = ref - spo2_tmp
+                if not all(np.isfinite(spo2_drop)):
+                    continue
+                spo2_drop[spo2_drop<0] = 0
+                area_tmp = simps(spo2_drop, dx=1/fs)
+                areas.append(area_tmp)
+                data.loc[i_apneaend, hypoxia_name] = area_tmp
+        except Exception as ee:
+            import pdb;pdb.set_trace()
+            print(ee)
     # compute the actual hypoxic burden for this recording:
     if hours_sleep is not None:
 

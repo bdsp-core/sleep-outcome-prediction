@@ -1,0 +1,13 @@
+{
+"ICH":"tab:blue",
+"IS":"tab:orange",
+"Dementia":"tab:brown",
+"MCI or Dementia":"tab:red",
+"Afib":"tab:purple",
+"DB2":"tab:green",
+"HTN":"tab:pink",
+"MI":"tab:cyan",
+"Bipolar":"tab:olive",
+"Depression":"tab:gray",
+"Death":"k"
+}
